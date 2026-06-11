@@ -1,5 +1,10 @@
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { BrowserRouter, Routes, Route, Link, useLocation } from 'react-router-dom';
+import VolunteerDetail from './VolunteerDetail';
+import VolunteerForm from './VolunteerForm';
+import CampaignsList from './CampaignsList';
+import OpportunitiesList from './OpportunitiesList';
 
 const languages = [
   { code: 'en', label: 'English' },
@@ -18,26 +23,87 @@ type Volunteer = {
   level: number;
 };
 
-const statCards = [
-  { label: 'Active Campaigns', value: '12', delta: '+18%' },
-  { label: 'Volunteer Hours', value: '1.2k', delta: '+9%' },
-  { label: 'Partner NGOs', value: '27', delta: '+3%' },
-  { label: 'Impact Score', value: '94', delta: '+6%' },
-];
+type Campaign = {
+  id: string;
+  title: string;
+  description?: string;
+  organization?: { name: string };
+  opportunities?: Array<{ id: string }>;
+  startDate?: string;
+  endDate?: string;
+};
 
-function App() {
+type Organization = {
+  id: string;
+  name: string;
+};
+
+type StatCard = {
+  label: string;
+  value: string | number;
+  delta: string;
+};
+
+function Dashboard() {
   const { t, i18n } = useTranslation();
   const [language, setLanguage] = useState(i18n.language || 'en');
   const [volunteers, setVolunteers] = useState<Volunteer[]>([]);
+  const [campaigns, setCampaigns] = useState<Campaign[]>([]);
+  const [statCards, setStatCards] = useState<StatCard[]>([
+    { label: 'Active Campaigns', value: '...', delta: '' },
+    { label: 'Volunteer Hours', value: '...', delta: '' },
+    { label: 'Partner NGOs', value: '...', delta: '' },
+    { label: 'Total Volunteers', value: '...', delta: '' },
+  ]);
   const [loading, setLoading] = useState(false);
+  const [search, setSearch] = useState('');
+  const [page, setPage] = useState(1);
+  const [limit] = useState(10);
+  const [total, setTotal] = useState(0);
 
   useEffect(() => {
+    // Fetch volunteers
     setLoading(true);
-    fetch('/api/volunteers')
+    const params = new URLSearchParams();
+    if (search) params.append('search', search);
+    params.append('page', String(page));
+    params.append('limit', String(limit));
+
+    fetch(`/api/volunteers?${params.toString()}`)
       .then(res => res.json())
-      .then(data => setVolunteers(data))
+      .then(data => {
+        setVolunteers(data.items || data);
+        if (typeof data.total === 'number') setTotal(data.total);
+      })
       .catch(() => setVolunteers([]))
       .finally(() => setLoading(false));
+  }, [search, page, limit]);
+
+  useEffect(() => {
+    // Fetch campaigns, organizations, and contributions for stats
+    Promise.all([
+      fetch('/api/campaigns?limit=100').then(r => r.json()),
+      fetch('/api/organizations?limit=100').then(r => r.json()),
+      fetch('/api/contributions?limit=100').then(r => r.json()),
+      fetch('/api/volunteers?limit=1').then(r => r.json()),
+    ])
+      .then(([campaignsRes, orgsRes, contribRes, volRes]) => {
+        const campaignList = campaignsRes.items || [];
+        const orgList = orgsRes.items || [];
+        const contributions = contribRes.items || [];
+        const volunteerCount = volRes.total || 0;
+
+        const totalHours = contributions.reduce((sum: number, c: any) => sum + (c.hours || 0), 0);
+
+        setCampaigns(campaignList);
+        setStatCards([
+          { label: 'Active Campaigns', value: campaignList.length, delta: '' },
+          { label: 'Volunteer Hours', value: totalHours, delta: '' },
+          { label: 'Partner NGOs', value: orgList.length, delta: '' },
+          { label: 'Total Volunteers', value: volunteerCount, delta: '' },
+        ]);
+      })
+      .catch(() => {});
   }, []);
 
   const handleLanguageChange = (code: string) => {
@@ -45,7 +111,7 @@ function App() {
     setLanguage(code);
   };
 
-  return (
+  const roster = (
     <div className="min-h-screen bg-slate-100 text-slate-900">
       <div className="grid min-h-screen grid-cols-1 lg:grid-cols-[280px_1fr]">
         <aside className="border-r border-slate-200 bg-white px-6 py-8 shadow-sm">
@@ -118,26 +184,23 @@ function App() {
               </div>
 
               <div className="mt-8 space-y-4">
-                <div className="grid gap-4 rounded-3xl border border-slate-200 bg-slate-50 p-5 sm:grid-cols-[4fr_1fr]">
-                  <div>
-                    <h3 className="text-lg font-semibold text-slate-900">Addis community cleanup</h3>
-                    <p className="mt-2 text-sm text-slate-600">Volunteer-led river cleanup and neighborhood awareness campaign.</p>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-sm text-slate-500">Open slots</p>
-                    <p className="mt-1 text-xl font-semibold text-slate-900">24</p>
-                  </div>
-                </div>
-                <div className="grid gap-4 rounded-3xl border border-slate-200 bg-slate-50 p-5 sm:grid-cols-[4fr_1fr]">
-                  <div>
-                    <h3 className="text-lg font-semibold text-slate-900">Rural health outreach</h3>
-                    <p className="mt-2 text-sm text-slate-600">Support vaccination and education efforts in partnership with local clinics.</p>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-sm text-slate-500">Open slots</p>
-                    <p className="mt-1 text-xl font-semibold text-slate-900">18</p>
-                  </div>
-                </div>
+                {campaigns.length === 0 ? (
+                  <div className="rounded-3xl border border-dashed border-slate-300 bg-slate-50 p-6 text-slate-600">No campaigns available yet.</div>
+                ) : (
+                  campaigns.slice(0, 5).map(campaign => (
+                    <div key={campaign.id} className="grid gap-4 rounded-3xl border border-slate-200 bg-slate-50 p-5 sm:grid-cols-[4fr_1fr]">
+                      <div>
+                        <h3 className="text-lg font-semibold text-slate-900">{campaign.title}</h3>
+                        <p className="mt-2 text-sm text-slate-600">{campaign.description}</p>
+                        {campaign.organization && <p className="mt-1 text-xs text-slate-500">by {campaign.organization.name}</p>}
+                      </div>
+                      <div className="text-right">
+                        <p className="text-sm text-slate-500">Opportunities</p>
+                        <p className="mt-1 text-xl font-semibold text-slate-900">{campaign.opportunities?.length || 0}</p>
+                      </div>
+                    </div>
+                  ))
+                )}
               </div>
             </div>
 
@@ -154,18 +217,16 @@ function App() {
               <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
                 <h3 className="text-xl font-semibold text-slate-900">Top volunteers</h3>
                 <ol className="mt-5 space-y-3 text-sm text-slate-600">
-                  <li className="flex items-center justify-between rounded-3xl bg-slate-50 p-4">
-                    <span>Merit Alem</span>
-                    <span className="font-semibold text-slate-900">1,240 pts</span>
-                  </li>
-                  <li className="flex items-center justify-between rounded-3xl bg-slate-50 p-4">
-                    <span>Ruth Bekele</span>
-                    <span className="font-semibold text-slate-900">1,120 pts</span>
-                  </li>
-                  <li className="flex items-center justify-between rounded-3xl bg-slate-50 p-4">
-                    <span>Samuel Tesfaye</span>
-                    <span className="font-semibold text-slate-900">1,020 pts</span>
-                  </li>
+                  {volunteers.length === 0 ? (
+                    <li className="rounded-3xl bg-slate-50 p-4">No volunteers yet.</li>
+                  ) : (
+                    volunteers.slice(0, 3).sort((a, b) => b.points - a.points).map(vol => (
+                      <li key={vol.id} className="flex items-center justify-between rounded-3xl bg-slate-50 p-4">
+                        <span>{vol.name}</span>
+                        <span className="font-semibold text-slate-900">{vol.points} pts</span>
+                      </li>
+                    ))
+                  )}
                 </ol>
               </div>
             </aside>
@@ -177,7 +238,16 @@ function App() {
                 <h2 className="text-2xl font-semibold text-slate-900">Volunteer roster</h2>
                 <p className="mt-2 text-sm text-slate-600">See volunteer profiles and skill sets.</p>
               </div>
-              {loading && <div className="rounded-3xl bg-slate-50 px-4 py-2 text-sm text-slate-500">Loading volunteers...</div>}
+                <div className="flex items-center gap-3">
+                  <Link to="/volunteers/new" className="rounded-3xl bg-slate-900 px-4 py-2 text-white">New Volunteer</Link>
+                  <input
+                    value={search}
+                    onChange={e => { setSearch(e.target.value); setPage(1); }}
+                    placeholder="Search volunteers..."
+                    className="rounded-3xl border border-slate-200 bg-white px-4 py-2 text-sm text-slate-700 shadow-sm"
+                  />
+                  {loading && <div className="rounded-3xl bg-slate-50 px-4 py-2 text-sm text-slate-500">Loading...</div>}
+                </div>
             </div>
 
             <div className="mt-6 grid gap-4">
@@ -188,10 +258,13 @@ function App() {
                   <div key={volunteer.id} className="rounded-3xl border border-slate-200 bg-slate-50 p-5">
                     <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                       <div>
-                        <p className="text-lg font-semibold text-slate-900">{volunteer.name}</p>
+                        <Link to={`/volunteers/${volunteer.id}`} className="text-lg font-semibold text-slate-900">{volunteer.name}</Link>
                         <p className="text-sm text-slate-600">{volunteer.email}</p>
                       </div>
-                      <div className="rounded-full bg-white px-4 py-2 text-sm font-medium text-slate-700 shadow-sm">Level {volunteer.level}</div>
+                      <div className="flex items-center gap-3">
+                        <div className="rounded-full bg-white px-4 py-2 text-sm font-medium text-slate-700 shadow-sm">Level {volunteer.level}</div>
+                        <Link to={`/volunteers/${volunteer.id}/edit`} className="rounded-3xl border px-3 py-2 text-sm">Edit</Link>
+                      </div>
                     </div>
                     <div className="mt-3 flex flex-wrap items-center gap-3 text-sm text-slate-600">
                       <span>{volunteer.points} pts</span>
@@ -202,11 +275,124 @@ function App() {
                 ))
               )}
             </div>
+
+            <div className="mt-6 flex items-center justify-between">
+              <div className="text-sm text-slate-600">Total: {total}</div>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setPage(p => Math.max(1, p - 1))}
+                  className="rounded-3xl border border-slate-200 bg-white px-4 py-2 text-sm text-slate-700 shadow-sm"
+                >Prev</button>
+                <div className="text-sm text-slate-700">Page {page}</div>
+                <button
+                  onClick={() => setPage(p => p + 1)}
+                  disabled={page * limit >= total}
+                  className={`rounded-3xl border border-slate-200 bg-white px-4 py-2 text-sm text-slate-700 shadow-sm ${page * limit >= total ? 'opacity-40 cursor-not-allowed' : ''}`}
+                >Next</button>
+              </div>
+            </div>
           </section>
         </main>
       </div>
     </div>
   );
+
+  return (
+    <BrowserRouter>
+      <div className="min-h-screen bg-slate-100 text-slate-900">
+        <div className="grid min-h-screen grid-cols-1 lg:grid-cols-[280px_1fr]">
+          <Sidebar language={language} onLanguageChange={handleLanguageChange} />
+          
+          <Routes>
+            <Route path="/" element={roster} />
+            <Route path="/campaigns" element={<div className="px-6 py-8"><CampaignsList /></div>} />
+            <Route path="/opportunities" element={<div className="px-6 py-8"><OpportunitiesList /></div>} />
+            <Route path="/volunteers/new" element={<div className="px-6 py-8"><Link to="/" className="block mb-4 text-slate-600 hover:text-slate-900">← Back</Link><VolunteerForm /></div>} />
+            <Route path="/volunteers/:id" element={<div className="px-6 py-8"><Link to="/" className="block mb-4 text-slate-600 hover:text-slate-900">← Back</Link><VolunteerDetail /></div>} />
+            <Route path="/volunteers/:id/edit" element={<div className="px-6 py-8"><Link to="/" className="block mb-4 text-slate-600 hover:text-slate-900">← Back</Link><VolunteerForm /></div>} />
+          </Routes>
+        </div>
+      </div>
+    </BrowserRouter>
+  );
 }
 
-export default App;
+function Sidebar({ language, onLanguageChange }: { language: string; onLanguageChange: (code: string) => void }) {
+  const location = useLocation();
+  
+  const navItems = [
+    { label: 'Dashboard', path: '/', icon: '📊' },
+    { label: 'Campaigns', path: '/campaigns', icon: '📋' },
+    { label: 'Opportunities', path: '/opportunities', icon: '🎯' },
+    { label: 'Volunteers', path: '/volunteers', icon: '👥' },
+  ];
+
+  return (
+    <aside className="border-r border-slate-200 bg-white px-6 py-8 shadow-sm">
+      <div className="flex items-center gap-3">
+        <div className="flex h-12 w-12 items-center justify-center rounded-3xl bg-slate-900 text-xl font-semibold text-white">VC</div>
+        <div>
+          <p className="text-sm font-semibold uppercase tracking-[0.28em] text-slate-500">Volunteer Connect</p>
+          <p className="text-xs text-slate-400">Ethiopia impact hub</p>
+        </div>
+      </div>
+
+      <nav className="mt-10 space-y-2 text-sm text-slate-700">
+        {navItems.map(item => (
+          <Link
+            key={item.path}
+            to={item.path}
+            className={`block rounded-3xl px-4 py-3 ${location.pathname === item.path ? 'bg-slate-900 text-white shadow-sm' : 'hover:bg-slate-50'}`}
+          >
+            <span className="mr-2">{item.icon}</span>
+            {item.label}
+          </Link>
+        ))}
+      </nav>
+
+      <div className="mt-12 rounded-3xl border border-slate-200 bg-slate-50 p-5 text-sm text-slate-700">
+        <p className="font-semibold text-slate-900">Languages</p>
+        <div className="mt-3 flex flex-wrap gap-2">
+          {languages.map(lang => (
+            <button
+              key={lang.code}
+              onClick={() => onLanguageChange(lang.code)}
+              className={`rounded-full border px-3 py-2 text-xs transition ${language === lang.code ? 'border-slate-900 bg-slate-900 text-white' : 'border-slate-200 bg-white text-slate-700 hover:border-slate-900'}`}
+            >
+              {lang.label}
+            </button>
+          ))}
+        </div>
+      </div>
+    </aside>
+  );
+}
+
+function App() {
+  const { i18n } = useTranslation();
+  const [language, setLanguage] = useState(i18n.language || 'en');
+
+  const handleLanguageChange = (code: string) => {
+    i18n.changeLanguage(code);
+    setLanguage(code);
+  };
+
+  return (
+    <BrowserRouter>
+      <div className="min-h-screen bg-slate-100 text-slate-900">
+        <div className="grid min-h-screen grid-cols-1 lg:grid-cols-[280px_1fr]">
+          <Sidebar language={language} onLanguageChange={handleLanguageChange} />
+          
+          <Routes>
+            <Route path="/" element={<Dashboard />} />
+            <Route path="/campaigns" element={<div className="px-6 py-8"><CampaignsList /></div>} />
+            <Route path="/opportunities" element={<div className="px-6 py-8"><OpportunitiesList /></div>} />
+            <Route path="/volunteers/new" element={<div className="px-6 py-8"><Link to="/" className="block mb-4 text-slate-600 hover:text-slate-900">← Back</Link><VolunteerForm /></div>} />
+            <Route path="/volunteers/:id" element={<div className="px-6 py-8"><Link to="/" className="block mb-4 text-slate-600 hover:text-slate-900">← Back</Link><VolunteerDetail /></div>} />
+            <Route path="/volunteers/:id/edit" element={<div className="px-6 py-8"><Link to="/" className="block mb-4 text-slate-600 hover:text-slate-900">← Back</Link><VolunteerForm /></div>} />
+          </Routes>
+        </div>
+      </div>
+    </BrowserRouter>
+  );
+}
