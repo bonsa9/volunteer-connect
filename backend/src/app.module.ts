@@ -15,6 +15,10 @@ import { OpportunitiesModule } from './opportunities/opportunities.module';
 import { SignupsModule } from './signups/signups.module';
 import { ContributionsModule } from './contributions/contributions.module';
 import { DistributionReportsModule } from './distribution-reports/distribution-reports.module';
+import { AuthModule } from './auth/auth.module';
+import { UsersModule } from './users/users.module';
+import { CaslModule } from './casl/casl.module';
+import { User } from './users/user.entity';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 
@@ -32,6 +36,7 @@ import { AppService } from './app.service';
         Signup,
         Contribution,
         DistributionReport,
+        User,
       ],
       synchronize: true,
     }),
@@ -42,6 +47,9 @@ import { AppService } from './app.service';
     SignupsModule,
     ContributionsModule,
     DistributionReportsModule,
+    AuthModule,
+    UsersModule,
+    CaslModule,
   ],
   controllers: [AppController],
   providers: [AppService],

@@ -23,12 +23,12 @@ export class OpportunitiesController {
 
   @Post()
   create(@Body(new ValidationPipe()) body: CreateOpportunityDto) {
-    return this.opportunitiesService.create(body);
+    return this.opportunitiesService.create(body as any);
   }
 
   @Put(':id')
   async update(@Param('id') id: string, @Body(new ValidationPipe()) body: UpdateOpportunityDto) {
-    const updated = await this.opportunitiesService.update(id, body);
+    const updated = await this.opportunitiesService.update(id, body as any);
     if (!updated) throw new NotFoundException();
     return updated;
   }
