@@ -1,4 +1,4 @@
-import { IsString, IsOptional, IsUUID, IsJSON, IsDate } from 'class-validator';
+import { IsString, IsOptional, IsUUID } from 'class-validator';
 
 export class CreateCampaignDto {
   @IsString()
@@ -9,7 +9,6 @@ export class CreateCampaignDto {
   description?: string;
 
   @IsOptional()
-  @IsJSON()
   location?: { latitude: number; longitude: number; placeName?: string };
 
   @IsOptional()
@@ -34,7 +33,6 @@ export class UpdateCampaignDto {
   description?: string;
 
   @IsOptional()
-  @IsJSON()
   location?: { latitude: number; longitude: number; placeName?: string };
 
   @IsOptional()

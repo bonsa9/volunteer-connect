@@ -10,10 +10,14 @@ export class OrganizationsService {
     private readonly organizationRepository: Repository<Organization>,
   ) {}
 
-  async findAll(opts?: { page?: string; limit?: string }) {
+  async findAll(opts?: { search?: string; page?: string; limit?: string }) {
     const qb = this.organizationRepository
       .createQueryBuilder('organization')
       .leftJoinAndSelect('organization.campaigns', 'campaigns');
+
+    if (opts?.search) {
+      qb.where('organization.name LIKE :q OR organization.email LIKE :q', { q: `%${opts.search}%` });
+    }
 
     const page = Math.max(1, parseInt(opts?.page as any) || 1);
     const limit = Math.min(100, parseInt(opts?.limit as any) || 20);

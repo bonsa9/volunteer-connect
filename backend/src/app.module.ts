@@ -19,6 +19,8 @@ import { AuthModule } from './auth/auth.module';
 import { UsersModule } from './users/users.module';
 import { CaslModule } from './casl/casl.module';
 import { User } from './users/user.entity';
+import { TemplatesModule } from './templates/templates.module';
+import { Template } from './templates/template.entity';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 
@@ -37,6 +39,7 @@ import { AppService } from './app.service';
         Contribution,
         DistributionReport,
         User,
+        Template,
       ],
       synchronize: true,
     }),
@@ -50,6 +53,7 @@ import { AppService } from './app.service';
     AuthModule,
     UsersModule,
     CaslModule,
+    TemplatesModule,
   ],
   controllers: [AppController],
   providers: [AppService],

@@ -35,7 +35,7 @@ export class AuthService {
       email: data.email,
       name: data.name,
       passwordHash,
-      role: Role.VOLUNTEER, // defaults to volunteer
+      role: data.role || Role.VOLUNTEER,
     });
     
     const payload = { email: newUser.email, sub: newUser.id, role: newUser.role };

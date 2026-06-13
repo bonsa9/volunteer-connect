@@ -9,7 +9,7 @@ export class OrganizationsController {
   @Get()
   findAll(
     @Query()
-    query: { page?: string; limit?: string },
+    query: { search?: string; page?: string; limit?: string },
   ) {
     return this.organizationsService.findAll(query);
   }

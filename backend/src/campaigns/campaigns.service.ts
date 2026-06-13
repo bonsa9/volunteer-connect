@@ -32,15 +32,26 @@ export class CampaignsService {
     return this.campaignRepository.findOne({ where: { id }, relations: ['organization', 'opportunities'] });
   }
 
-  create(body: Partial<Campaign>) {
-    const campaign = this.campaignRepository.create(body as Campaign);
+  create(body: any) {
+    const { organizationId, ...rest } = body;
+    const campaign = this.campaignRepository.create({
+      ...rest,
+      organization: organizationId ? { id: organizationId } : undefined,
+    } as any);
     return this.campaignRepository.save(campaign);
   }
 
-  async update(id: string, body: Partial<Campaign>) {
+  async update(id: string, body: any) {
     const existing = await this.campaignRepository.findOneBy({ id });
     if (!existing) return null;
-    const merged = this.campaignRepository.merge(existing, body as Campaign);
+
+    const { organizationId, ...rest } = body;
+    const updateData: any = { ...rest };
+    if (organizationId !== undefined) {
+      updateData.organization = organizationId ? { id: organizationId } : null;
+    }
+
+    const merged = this.campaignRepository.merge(existing, updateData);
     return this.campaignRepository.save(merged);
   }
 

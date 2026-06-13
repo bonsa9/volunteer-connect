@@ -37,15 +37,26 @@ export class OpportunitiesService {
     return this.opportunityRepository.findOne({ where: { id }, relations: ['campaign', 'signups'] });
   }
 
-  create(body: Partial<Opportunity>) {
-    const opportunity = this.opportunityRepository.create(body as Opportunity);
+  create(body: any) {
+    const { campaignId, ...rest } = body;
+    const opportunity = this.opportunityRepository.create({
+      ...rest,
+      campaign: campaignId ? { id: campaignId } : undefined,
+    } as any);
     return this.opportunityRepository.save(opportunity);
   }
 
-  async update(id: string, body: Partial<Opportunity>) {
+  async update(id: string, body: any) {
     const existing = await this.opportunityRepository.findOneBy({ id });
     if (!existing) return null;
-    const merged = this.opportunityRepository.merge(existing, body as Opportunity);
+
+    const { campaignId, ...rest } = body;
+    const updateData: any = { ...rest };
+    if (campaignId !== undefined) {
+      updateData.campaign = campaignId ? { id: campaignId } : null;
+    }
+
+    const merged = this.opportunityRepository.merge(existing, updateData);
     return this.opportunityRepository.save(merged);
   }
 

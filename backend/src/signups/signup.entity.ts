@@ -18,4 +18,10 @@ export class Signup {
 
   @Column({ default: false })
   confirmed: boolean;
+
+  @Column({ default: false })
+  attended: boolean;
+
+  @Column({ type: 'decimal', precision: 5, scale: 2, default: 0 })
+  hoursLogged: number;
 }

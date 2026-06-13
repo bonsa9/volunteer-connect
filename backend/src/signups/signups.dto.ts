@@ -25,3 +25,13 @@ export class UpdateSignupDto {
   @IsUUID()
   opportunityId?: string;
 }
+
+import { IsNumber } from 'class-validator';
+
+export class MarkAttendanceDto {
+  @IsBoolean()
+  attended: boolean;
+
+  @IsNumber()
+  hoursLogged: number;
+}

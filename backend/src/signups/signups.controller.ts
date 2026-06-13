@@ -1,6 +1,6 @@
 import { Controller, Get, Query, Param, Post, Body, Put, NotFoundException, Delete, ValidationPipe } from '@nestjs/common';
 import { SignupsService } from './signups.service';
-import { CreateSignupDto, UpdateSignupDto } from './signups.dto';
+import { CreateSignupDto, UpdateSignupDto, MarkAttendanceDto } from './signups.dto';
 
 @Controller('api/signups')
 export class SignupsController {
@@ -36,5 +36,19 @@ export class SignupsController {
   @Delete(':id')
   remove(@Param('id') id: string) {
     return this.signupsService.remove(id);
+  }
+
+  @Post(':id/attendance')
+  async markAttendance(
+    @Param('id') id: string,
+    @Body(new ValidationPipe()) body: MarkAttendanceDto,
+  ) {
+    const result = await this.signupsService.markAttendance(id, body.attended, body.hoursLogged);
+    return result;
+  }
+
+  @Get(':id/certificate')
+  async getCertificate(@Param('id') id: string) {
+    return this.signupsService.getCertificateData(id);
   }
 }
